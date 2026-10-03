@@ -1,0 +1,29 @@
+services:
+  ask:
+    image: python:3.13-slim
+    command: ["python", "/app/ask.py"]
+    environment:
+      ASK_MODE: ${ASK_MODE:-allowlist}
+      TENANTS_FILE: /data/tenants.txt
+    volumes:
+      - ./ask/ask.py:/app/ask.py:ro
+      - ./tenants.txt:/data/tenants.txt:ro
+
+  caddy:
+    image: caddy:2.11.6-alpine
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [ask]
+
+  # curl with a readable view of Caddy's root CA, so TLS can be verified for real.
+  client:
+    image: curlimages/curl:8.11.1
+    user: root   # Caddy keeps its PKI directory private to its own user
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - caddy-data:/caddy-data:ro
+    depends_on: [caddy]
+
+volumes:
+  caddy-data:

@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: make test
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+
+  drill:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: make up
+      - name: Drill
+        run: make drill
+      - name: Publish measurements
+        if: always()
+        run: |
+          {
+            echo "### Drill"
+            echo '```json'
+            cat results/drill.json 2>/dev/null || echo "no result"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=60
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

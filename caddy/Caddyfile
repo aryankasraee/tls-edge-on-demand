@@ -1,0 +1,17 @@
+{
+	# Before asking a CA for a certificate for an unknown name, Caddy asks this
+	# endpoint. It is the only thing standing between the open internet and your
+	# CA's rate limit.
+	on_demand_tls {
+		ask http://ask:9000/check
+	}
+	# The lab uses Caddy's built-in CA so it runs offline. In production, drop
+	# `internal` and a public ACME CA issues the certificates.
+}
+
+https:// {
+	tls internal {
+		on_demand
+	}
+	respond "tenant site for {host}" 200
+}
